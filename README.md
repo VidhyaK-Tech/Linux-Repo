@@ -1,139 +1,156 @@
-Script for Automatic cleanup
+#  Log Cleanup Script
 
-#!/bin/bash
+## Overview
 
-#############################################################
-# Script Name : log_cleanup.sh
-# Purpose     : Cleanup and compress old log files
-# Author      : DevOps Team
-# Usage       : ./log_cleanup.sh
-#############################################################
+`log_cleanup.sh` is a Bash script designed to automate log file maintenance on Linux systems.
+It helps in managing disk space by identifying large logs, compressing old logs, and removing outdated compressed files.
 
-# Exit immediately if command fails
-set -e
+---
 
-# Variables
-LOG_DIR="/var/log"
-SCRIPT_LOG="/var/log/log_cleanup.log"
-DATE=$(date '+%Y-%m-%d %H:%M:%S')
+## Features
 
-# Counters
-COMPRESSED_COUNT=0
-DELETED_COUNT=0
-LARGE_FILES_COUNT=0
+* 🔍 Detects log files larger than **500MB**
+* 🗜 Compresses `.log` files older than **7 days**
+* 🗑 Deletes compressed `.gz` files older than **30 days**
+* 📊 Generates execution summary
+* 📝 Logs all operations to a script log file
 
-# Start logging
-{
-    echo "===================================================="
-    echo "Log Cleanup Started at: $DATE"
-    echo "===================================================="
+---
 
-    #########################################################
-    # Step 1: Find large log files (>500MB)
-    #########################################################
+## Script Details
 
-    echo "[INFO] Searching for log files larger than 500MB..."
+| Attribute       | Value                      |
+| --------------- | -------------------------- |
+| Script Name     | `log_cleanup.sh`           |
+| Log Directory   | `/var/log`                 |
+| Script Log File | `/var/log/log_cleanup.log` |
 
-    LARGE_FILES=$(find "$LOG_DIR" -type f -name "*.log" -size +500M)
+---
 
-    if [[ -n "$LARGE_FILES" ]]; then
-        echo "$LARGE_FILES"
+## Prerequisites
 
-        # Count large files
-        LARGE_FILES_COUNT=$(echo "$LARGE_FILES" | wc -l)
-    else
-        echo "[INFO] No large log files found."
-    fi
-	
-	#########################################################
-    # Step 2: Compress logs older than 7 days
-    #########################################################
+* Linux/Unix system
+* Bash shell
+* Required permissions to access `/var/log`
+* Installed utilities:
 
-    echo ""
-    echo "[INFO] Compressing logs older than 7 days..."
+  * `find`
+  * `gzip`
+  * `rm`
 
-    OLD_LOGS=$(find "$LOG_DIR" -type f -name "*.log" -mtime +7)
+---
 
-    if [[ -n "$OLD_LOGS" ]]; then
+## Usage
 
-        # Loop through each log file
-        while IFS= read -r FILE
-        do
-            echo "Compressing: $FILE"
+### 1. Make the script executable
 
-            gzip "$FILE"
+```bash
+chmod +x log_cleanup.sh
+```
 
-            ((COMPRESSED_COUNT++))
+### 2. Run the script
 
-        done <<< "$OLD_LOGS"
+```bash
+./log_cleanup.sh
+```
 
-    else
-        echo "[INFO] No old logs found for compression."
-    fi
+---
 
-    #########################################################
-    # Step 3: Delete compressed logs older than 30 days
-    #########################################################
+## Automation (Recommended)
 
-    echo ""
-    echo "[INFO] Deleting compressed logs older than 30 days..."
+You can schedule this script using **cron**.
 
-    OLD_COMPRESSED=$(find "$LOG_DIR" -type f -name "*.gz" -mtime +30)
+### Example: Run daily at 2 AM
 
-    if [[ -n "$OLD_COMPRESSED" ]]; then
+```bash
+crontab -e
+```
 
-        while IFS= read -r FILE
-        do
-            echo "Deleting: $FILE"
+Add:
 
-            rm -f "$FILE"
+```bash
+0 2 * * * /path/to/log_cleanup.sh
+```
 
-            ((DELETED_COUNT++))
+---
 
-        done <<< "$OLD_COMPRESSED"
+##  How It Works
 
-    else
-        echo "[INFO] No old compressed logs found."
-    fi
+### Step 1: Identify Large Logs
 
-    #########################################################
-    # Step 4: Generate Summary
-    #########################################################
+* Finds `.log` files larger than **500MB**
 
-    echo ""
-    echo "================ Summary ================="
-    echo "Large Files Found      : $LARGE_FILES_COUNT"
-    echo "Logs Compressed        : $COMPRESSED_COUNT"
-    echo "Compressed Logs Deleted: $DELETED_COUNT"
-    echo "=========================================="
+### Step 2: Compress Old Logs
 
-    echo "Cleanup Completed Successfully"
+* Compresses `.log` files older than **7 days** using `gzip`
 
-} >> "$SCRIPT_LOG" 2>&1
+### Step 3: Delete Old Compressed Logs
 
-# Exit successfully
-exit 0
+* Removes `.gz` files older than **30 days**
 
-==================================================================================
+### Step 4: Summary Report
 
-Sample Output
--------------
-ubuntu@ip-172-31-36-28:~$ cat ~/log_lab/cleanup_execution.log
+* Displays:
 
-# Log Cleanup Started at: 2026-05-26 09:33:13
+  * Number of large files found
+  * Number of logs compressed
+  * Number of logs deleted
+
+---
+
+##  Sample Output
+
+```
+====================================================
+Log Cleanup Started at: 2026-06-29 02:00:00
+====================================================
+
 [INFO] Searching for log files larger than 500MB...
-/home/ubuntu/log_lab/nginx/access.log
-/home/ubuntu/log_lab/app1/big_app.log
-[INFO] Compressing logs older than 7 days...
-[INFO] No old logs found for compression.
-# [INFO] Deleting compressed logs older than 30 days...
-Deleting: /home/ubuntu/log_lab/app1/old_app.log.gz
+/var/log/syslog.log
 
-# Log Cleanup Started at: 2026-05-26 09:34:01
-[INFO] Searching for log files larger than 500MB...
-/home/ubuntu/log_lab/nginx/access.log
-/home/ubuntu/log_lab/app1/big_app.log
 [INFO] Compressing logs older than 7 days...
-[INFO] No old logs found for compression.
+Compressing: /var/log/app.log
+
 [INFO] Deleting compressed logs older than 30 days...
-Deleting: /home/ubuntu/log_lab/app2/old_error.log.gz
+Deleting: /var/log/app.log.gz
+
+================ Summary =================
+Large Files Found      : 1
+Logs Compressed        : 1
+Compressed Logs Deleted: 1
+==========================================
+
+Cleanup Completed Successfully
+```
+
+---
+
+## Important Notes
+
+* Run with **sudo/root privileges** for full access:
+
+  ```bash
+  sudo ./log_cleanup.sh
+  ```
+* Ensure critical logs are backed up before deletion
+* Modify paths if your logs are stored outside `/var/log`
+
+---
+
+## Best Practices
+
+* Test in a staging environment before production use
+* Adjust file size and retention thresholds as needed
+* Monitor script logs regularly
+
+---
+
+## Author
+
+*VidhyaK-Tech*
+
+---
+
+## 📄 License
+
+This script is free to use and modify for internal and commercial purposes.
